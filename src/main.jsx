@@ -7,8 +7,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// Use the correct providers for React
-import { NhostClient, NhostReactProvider } from '@nhost/react';
+// Use the correct provider name as suggested by your editor
+// Changed 'NhostReactProvider' to 'NhostProvider'
+import { NhostClient, NhostProvider } from '@nhost/react';
 import { NhostApolloProvider } from '@nhost/react-apollo';
 
 // Initialize the Nhost client using the secure environment variable
@@ -19,13 +20,15 @@ const nhost = new NhostClient({
 // Render the app with the correct providers
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <NhostReactProvider nhost={nhost}>
+    {/* Changed 'NhostReactProvider' to 'NhostProvider' */}
+    <NhostProvider nhost={nhost}>
       <NhostApolloProvider nhost={nhost}>
         <App />
       </NhostApolloProvider>
-    </NhostReactProvider>
+    </NhostProvider>
   </React.StrictMode>
 );
+
 
 
 // /**
