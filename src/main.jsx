@@ -1,20 +1,40 @@
 /**
  * @copyright Nomaan Faruki - 2025
  */
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
-
 // Use the correct provider name as suggested by your editor
 // Changed 'NhostReactProvider' to 'NhostProvider'
 import { NhostClient, NhostProvider } from '@nhost/react';
 import { NhostApolloProvider } from '@nhost/react-apollo';
 
-// Initialize the Nhost client using the secure environment variable
+// Debug: Log environment variables
+const envBackendUrl = import.meta.env.VITE_NHOST_BACKEND_URL;
+const fallbackUrl = 'https://ndmbvkxpkknkigiptvny.nhost.run';
+const backendUrl = envBackendUrl || fallbackUrl;
+
+console.log('🔍 Environment Debug Info:');
+console.log('VITE_NHOST_BACKEND_URL from env:', envBackendUrl);
+console.log('Using backend URL:', backendUrl);
+console.log('Environment mode:', import.meta.env.MODE);
+console.log('All environment variables:', import.meta.env);
+
+// Validate the environment variable
+if (!envBackendUrl) {
+  console.warn('⚠️ VITE_NHOST_BACKEND_URL not found in environment variables');
+  console.warn('Using fallback URL:', fallbackUrl);
+  console.log('Available env vars:', Object.keys(import.meta.env));
+} else {
+  console.log('✅ Environment variable found:', envBackendUrl);
+}
+
+console.log('🚀 Initializing Nhost with URL:', backendUrl);
+
+// Initialize the Nhost client using the backend URL (env var or fallback)
 const nhost = new NhostClient({
-  backendUrl: import.meta.env.VITE_NHOST_BACKEND_URL
+  backendUrl: backendUrl
 });
 
 // Render the app with the correct providers
@@ -28,7 +48,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </NhostProvider>
   </React.StrictMode>
 );
-
 
 
 // /**
