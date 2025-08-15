@@ -7,81 +7,24 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// Changed to the correct provider for React
-import { NhostClient, NhostReactProvider } from '@nhost/react'; 
-import { ApolloProvider, ApolloClient, InMemoryCache, HttpLink, ApolloLink, split } from '@apollo/client';
-import { WebSocketLink } from '@apollo/client/link/ws';
-import { getMainDefinition } from '@apollo/client/utilities';
+// Use the correct providers for React
+import { NhostClient, NhostReactProvider } from '@nhost/react';
+import { NhostApolloProvider } from '@nhost/react-apollo';
 
-// --- THIS IS THE ONLY PART THAT HAS BEEN CHANGED ---
-// Initialize the Nhost client using the environment variable for Netlify
+// Initialize the Nhost client using the secure environment variable
 const nhost = new NhostClient({
-  backendUrl: import.meta.env.VITE_NHOST_BACKEND_URL,
-});
-// ----------------------------------------------------
-
-// An HTTP link for queries and mutations
-const httpLink = new HttpLink({
-  uri: nhost.graphql.url,
+  backendUrl: import.meta.env.VITE_NHOST_BACKEND_URL
 });
 
-// A link to add the Authorization header for HTTP requests
-const authHttpLink = new ApolloLink((operation, forward) => {
-  const token = nhost.auth.getAccessToken();
-  if (token) {
-    operation.setContext({
-      headers: {
-        ...operation.getContext().headers,
-        authorization: `Bearer ${token}`,
-      },
-    });
-  }
-  return forward(operation);
-});
-
-// A WebSocket link for real-time subscriptions
-const wsLink = new WebSocketLink({
-  uri: nhost.graphql.url.replace('https://', 'wss://'),
-  options: {
-    reconnect: true,
-    connectionParams: () => {
-      const token = nhost.auth.getAccessToken();
-      return {
-        headers: {
-          authorization: token ? `Bearer ${token}` : '',
-        },
-      };
-    },
-  },
-});
-
-// Use `split` to route requests to the correct link
-const splitLink = split(
-  ({ query }) => {
-    const definition = getMainDefinition(query);
-    return (
-      definition.kind === 'OperationDefinition' && definition.operation === 'subscription'
-    );
-  },
-  wsLink,
-  authHttpLink.concat(httpLink)
-);
-
-// Initialize the Apollo Client with the correct link setup
-const client = new ApolloClient({
-  cache: new InMemoryCache(),
-  link: splitLink,
-});
-
+// Render the app with the correct providers
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ApolloProvider client={client}>
-      {/* Changed to the correct provider for React */}
-      <NhostReactProvider nhost={nhost}>
+    <NhostReactProvider nhost={nhost}>
+      <NhostApolloProvider nhost={nhost}>
         <App />
-      </NhostReactProvider>
-    </ApolloProvider>
-  </React.StrictMode>,
+      </NhostApolloProvider>
+    </NhostReactProvider>
+  </React.StrictMode>
 );
 
 
