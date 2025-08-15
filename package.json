@@ -15,6 +15,7 @@
     "@material-tailwind/react": "^2.1.10",
     "@nhost/nextjs": "^2.3.0",
     "@nhost/react": "^3.11.1",
+    "@nhost/react-apollo": "^18.0.1",
     "@tailwindcss/vite": "^4.1.11",
     "apollo-link-ws": "^1.0.20",
     "date-fns-tz": "^3.2.0",
