@@ -1,5 +1,6 @@
-// nhost/functions/send-verification-email.js
-// Clean, minimal version that will work without any dependencies
+/**
+ * @copyright Nomaan Faruki - 2025
+ */
 
 export default async (req, res) => {
     // CORS headers
