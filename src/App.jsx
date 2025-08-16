@@ -1,4 +1,6 @@
-// src/App.jsx
+/**
+ * @copyright Nomaan Faruki - 2025
+ */
 import React, { useState, useEffect } from 'react';
 import { useAuthenticationStatus, useUserData } from '@nhost/react';
 import Login from './Login';
@@ -13,7 +15,6 @@ export default function App() {
   const [showSignup, setShowSignup] = useState(false);
   const [isVerificationPage, setIsVerificationPage] = useState(false);
 
-  // Check for verification page on mount and URL changes
   useEffect(() => {
     const checkVerificationPage = () => {
       const pathname = window.location.pathname;
@@ -21,13 +22,13 @@ export default function App() {
       const hasToken = searchParams.has('token');
       const hasEmail = searchParams.has('email');
       
-      // More robust verification page detection
+      
       const isVerifyPage = (
         pathname === '/verify-email' ||
         pathname === '/EmailVerification' ||
         pathname.endsWith('/verify-email') ||
         pathname.endsWith('/EmailVerification') ||
-        (hasToken && hasEmail) // Both token and email parameters present
+        (hasToken && hasEmail) 
       );
       
       console.log('--- Verification Page Check ---');
@@ -43,7 +44,6 @@ export default function App() {
 
     checkVerificationPage();
 
-    // Listen for URL changes (for single-page apps)
     const handlePopState = () => {
       checkVerificationPage();
     };
@@ -61,7 +61,6 @@ export default function App() {
   console.log('isVerificationPage:', isVerificationPage);
   console.log('------------------------');
 
-  // Show loading while initial authentication check is happening
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-900 text-zinc-200">
@@ -73,15 +72,14 @@ export default function App() {
     );
   }
 
-  // Handle verification page - should work regardless of auth status
   if (isVerificationPage) {
     console.log('[DEBUG] Showing EmailVerification component');
     return <EmailVerification />;
   }
 
-  // User is authenticated
+
   if (isAuthenticated) {
-    // Wait for user data to load
+   
     if (!user) {
       console.log('[DEBUG] Authenticated but waiting for user data...');
       return (
@@ -94,18 +92,18 @@ export default function App() {
       );
     }
 
-    // User data loaded, check verification status
+
     if (!user.emailVerified) {
       console.log('[DEBUG] User authenticated but email not verified');
       return <PleaseVerifyEmail />;
     }
 
-    // All good - show main app
+
     console.log('[DEBUG] User authenticated and verified - showing MainApp');
     return <MainApp />;
   }
 
-  // Not authenticated - show login/signup
+
   console.log('[DEBUG] Not authenticated - showing Login/Signup');
   return (
     <>
@@ -117,29 +115,3 @@ export default function App() {
     </>
   );
 }
-// import React, { useState } from 'react';
-// import { useAuthenticationStatus } from '@nhost/react';
-// import Login from './Login';
-// import MainApp from './MainApp';
-// import Signup from './SignUp';
-
-// export default function App() {
-//   const { isLoading, isAuthenticated } = useAuthenticationStatus();
-//   const [showSignup, setShowSignup] = useState(false);
-
-//   if (isLoading) {
-//   return (
-//     <div className="flex items-center justify-center min-h-screen bg-zinc-900 text-zinc-200">
-//       <div className="animate-pulse text-lg">Loading...</div>
-//     </div>
-//   );
-// }
-
-//   if (isAuthenticated) {
-//     return <MainApp />;
-//   }
-
-//   return <>{showSignup ? <Signup setShowSignup={setShowSignup} /> : <Login setShowSignup={setShowSignup} />}</>;
-// }
-
-

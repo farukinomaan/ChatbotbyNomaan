@@ -1,4 +1,6 @@
-// src/PleaseVerifyEmail.jsx
+/**
+ * @copyright Nomaan Faruki - 2025
+ */
 
 import React from 'react';
 import { useSignOut, useUserData } from '@nhost/react';

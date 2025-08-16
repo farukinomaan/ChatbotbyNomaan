@@ -1,11 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
 
-// 1. Generate random token (uuid based, safer than Math.random)
 export const generateVerificationToken = () => {
-  return uuidv4().replace(/-/g, "").slice(0, 24); // 24-char token
+  return uuidv4().replace(/-/g, "").slice(0, 24); 
 };
 
-// 2. Store verification token with better auth handling
+
 export const storeVerificationToken = async (nhost, email, token) => {
   try {
     console.log("[DEBUG] Storing token for:", { email, token });
@@ -13,16 +12,15 @@ export const storeVerificationToken = async (nhost, email, token) => {
     console.log("[DEBUG] User ID:", nhost.auth.getUser()?.id);
     
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // expires in 24h
+    expiresAt.setHours(expiresAt.getHours() + 24); 
     
-    // Get user ID
+   
     const userId = nhost.auth.getUser()?.id;
     if (!userId) {
       console.error("[DEBUG] No user ID available");
       return { success: false, error: "User not authenticated properly" };
     }
     
-    // Try the mutation with explicit user_id
     const mutation = `
       mutation InsertEmailVerification($object: email_verifications_insert_input!) {
         insert_email_verifications_one(object: $object) {
@@ -41,7 +39,7 @@ export const storeVerificationToken = async (nhost, email, token) => {
         token,
         expires_at: expiresAt.toISOString(),
         verified: false,
-        user_id: userId, // Explicit user_id
+        user_id: userId, 
       },
     };
 
@@ -52,7 +50,7 @@ export const storeVerificationToken = async (nhost, email, token) => {
       console.error("[DEBUG] GraphQL Insert Error:", error);
       console.error("[DEBUG] Error details:", JSON.stringify(error, null, 2));
       
-      // If that fails, try without user_id (let column preset handle it)
+      
       console.log("[DEBUG] Trying without explicit user_id...");
       
       const simpleVariables = {
@@ -69,7 +67,7 @@ export const storeVerificationToken = async (nhost, email, token) => {
       if (simpleResult.error) {
         console.error("[DEBUG] Simple mutation also failed:", simpleResult.error);
         
-        // Try bulk insert as final fallback
+        
         console.log("[DEBUG] Trying bulk insert as final fallback...");
         
         const bulkMutation = `
@@ -112,13 +110,12 @@ export const storeVerificationToken = async (nhost, email, token) => {
   }
 };
 
-// 3. Send verification email
 export const sendVerificationEmail = async (email, token) => {
   try {
     const verifyUrl = `${window.location.origin}/verify-email?email=${encodeURIComponent(email)}&token=${token}`;
     console.log("[DEBUG] Verification URL:", verifyUrl);
     
-    // For testing - show alert with verification link
+    
     alert(`✅ Verification Email (TEST MODE)\n\n` +
           `Email: ${email}\n\n` +
           `Click this link to verify your account:\n${verifyUrl}\n\n` +
@@ -173,7 +170,6 @@ export const verifyEmailToken = async (nhost, email, token) => {
     const { id, user_id } = data.email_verifications[0];
     console.log("[DEBUG] Found verification record:", { id, user_id });
 
-    // Mark token verified + update user.emailVerified
     const mutation = `
       mutation VerifyEmail($id: uuid!, $userId: uuid!) {
         update_email_verifications_by_pk(
@@ -203,7 +199,6 @@ export const verifyEmailToken = async (nhost, email, token) => {
 
     console.log("[DEBUG] Email verified successfully:", updateRes.data);
     
-    // Force refresh of auth state
     try {
       await nhost.auth.refreshSession();
       console.log("[DEBUG] Session refreshed successfully");

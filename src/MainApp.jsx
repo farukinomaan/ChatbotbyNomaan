@@ -31,7 +31,6 @@ const CREATE_CHAT_MUTATION = gql`
   }
 `;
 
-// DELETE_CHAT_MUTATION has been removed
 
 export default function MainApp() {
   const user = useUserData();

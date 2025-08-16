@@ -10,7 +10,7 @@ import { ApolloProvider, ApolloClient, InMemoryCache, HttpLink, ApolloLink, spli
 import { WebSocketLink } from '@apollo/client/link/ws';
 import { getMainDefinition } from '@apollo/client/utilities';
 
-// Get configuration from environment variables with fallbacks
+
 const subdomain = import.meta.env.VITE_NHOST_SUBDOMAIN || 'ndmbvkkpkvnkjgiptvny';
 const region = import.meta.env.VITE_NHOST_REGION || 'ap-south-1';
 
@@ -47,13 +47,13 @@ const authHttpLink = new ApolloLink((operation, forward) => {
   return forward(operation);
 });
 
-// A WebSocket link for real-time subscriptions
+
 const wsLink = new WebSocketLink({
   uri: nhost.graphql.url.replace('https://', 'wss://'),
   options: {
     reconnect: true,
     connectionParams: () => {
-      const token = nhost.auth.getAccessToken(); // Correctly get the token here
+      const token = nhost.auth.getAccessToken(); 
       return {
         headers: {
           authorization: token ? `Bearer ${token}` : '',
@@ -63,7 +63,6 @@ const wsLink = new WebSocketLink({
   },
 });
 
-// Use `split` to route requests to the correct link
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query);
@@ -75,7 +74,7 @@ const splitLink = split(
   authHttpLink.concat(httpLink)
 );
 
-// Initialize the Apollo Client with the correct link setup
+
 const client = new ApolloClient({
   cache: new InMemoryCache(),
   link: splitLink,
