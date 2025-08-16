@@ -23,6 +23,7 @@
     "graphql": "^16.11.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "resend": "^6.0.1",
     "subscriptions-transport-ws": "^0.9.19"
   },
   "devDependencies": {
