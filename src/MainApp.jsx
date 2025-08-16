@@ -422,7 +422,7 @@ export default function MainApp() {
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
                   <img
-                    src="public/Untitled_design-5-removebg-preview.png"
+                    src="/Untitled_design-5-removebg-preview.png"
                     alt="Logo"
                     className="w-full h-full object-cover"
                   />
