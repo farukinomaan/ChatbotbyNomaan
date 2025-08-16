@@ -116,32 +116,16 @@ export default async (req, res) => {
       await sgMail.send(msg);
       */
   
-      // **OPTION 3: Using Fetch with External Email API (e.g., EmailJS)**
-      const emailPayload = {
-        service_id: process.env.EMAILJS_SERVICE_ID,
-        template_id: process.env.EMAILJS_TEMPLATE_ID,
-        user_id: process.env.EMAILJS_USER_ID,
-        template_params: {
-          to_email: email,
-          to_name: userName || 'User',
-          verification_link: verificationLink,
-          app_name: 'Your App Name'
-        }
-      };
-  
-      const emailResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailPayload)
-      });
-  
-      if (!emailResponse.ok) {
-        throw new Error(`Email service responded with status: ${emailResponse.status}`);
-      }
-  
-      console.log('✅ Email sent successfully to:', email);
+      // **TEMPORARY: Just log the email details for now**
+      console.log('📧 EMAIL DETAILS:');
+      console.log('To:', email);
+      console.log('Subject: Please verify your email address');
+      console.log('Verification Link:', verificationLink);
+      console.log('HTML Content Length:', emailHtml.length);
+      
+      // For now, we'll simulate successful email sending
+      // TODO: Replace this with actual email service
+      console.log('✅ Email sending simulated successfully');
   
       return res.status(200).json({
         success: true,
