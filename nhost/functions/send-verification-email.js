@@ -1,19 +1,15 @@
 // nhost/functions/send-verification-email.js
-
 import { Resend } from 'resend';
-
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async (req, res) => {
   // --- CORS FIX ---
   // Set the required headers to allow requests from any origin.
-  // This is crucial for your localhost and deployed frontend to be able to call this function.
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 
   // The browser sends a "preflight" OPTIONS request first to check CORS.
-  // We need to handle it and send a successful response.
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -24,7 +20,6 @@ export default async (req, res) => {
   }
 
   const { email, token, baseUrl, userName } = req.body;
-
   if (!email || !token || !baseUrl) {
     return res.status(400).send({ message: 'Missing required fields' });
   }
@@ -54,7 +49,6 @@ export default async (req, res) => {
     }
 
     return res.status(200).send({ message: 'Email sent successfully', details: data });
-
   } catch (err) {
     console.error('A critical server error occurred:', err);
     return res.status(500).send({ message: 'An internal server error occurred.' });
