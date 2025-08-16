@@ -23,8 +23,8 @@ export default async (req, res) => {
         return res.status(400).json({ message: 'Missing required fields' });
       }
   
-      // Create verification link
-      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+      // Create verification link (include both token and email)
+      const verificationLink = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
   
       console.log('📧 EMAIL VERIFICATION REQUEST:');
       console.log('To Email:', email);

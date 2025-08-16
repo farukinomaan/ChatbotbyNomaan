@@ -120,8 +120,9 @@ export default function Signup({ setShowSignup }) {
       const responseData = await response.json();
       console.log('[DEBUG] Step 5: Function returned success!', responseData);
       // Add this after line 121 in SignUp.jsx
+      // Add this after line 121 in SignUp.jsx
       console.log('[DEBUG] Step 5.1: Full response data:', JSON.stringify(responseData.data, null, 2));
-      setSignupSuccess(true);
+      console.log('[DEBUG] Step 5.2: Verification link:', responseData.data.verificationLink);
   
     } catch (error) {
       // This block will catch ANY error from the above steps, including network errors.
