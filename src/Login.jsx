@@ -43,7 +43,7 @@ export default function Login({ setShowSignup }) {
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-3">
                 <img
-                  src="public/Untitled_design-5-removebg-preview.png"
+                  src="/Untitled_design-5-removebg-preview.png"
                   alt="Logo"
                   className="w-16 h-16 rounded-lg object-cover"
                 />
