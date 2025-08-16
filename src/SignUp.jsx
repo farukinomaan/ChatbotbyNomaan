@@ -81,17 +81,23 @@ export default function Signup({ setShowSignup }) {
     setIsVerificationLoading(true);
     
     try {
-      console.log('[DEBUG] Step 1: Starting email verification process.');
+      console.log('[DEBUG] Step 1: Starting email verification process for:', email);
+      
+      // Generate verification token
       const token = generateVerificationToken();
+      console.log('[DEBUG] Step 2: Generated token:', token);
+      
+      // Store token in database FIRST
       const storeResult = await storeVerificationToken(nhost, email, token);
-  
+      
       if (!storeResult.success) {
-        // This error is critical, we should stop if it fails.
-        console.error('[DEBUG] FATAL: Failed to store verification token in the database.', storeResult.error);
-        throw new Error('Could not store verification token.');
+        console.error('[DEBUG] FATAL: Failed to store verification token:', storeResult.error);
+        throw new Error('Could not store verification token in database');
       }
-      console.log('[DEBUG] Step 2: Verification token stored successfully in DB.');
-  
+      
+      console.log('[DEBUG] Step 3: Token stored successfully in database');
+      
+      // Now send email using your serverless function
       const functionUrl = `${nhost.functions.url}/send-verification-email`;
       const payload = {
         email: email,
@@ -100,8 +106,8 @@ export default function Signup({ setShowSignup }) {
         baseUrl: window.location.origin
       };
   
-      console.log(`[DEBUG] Step 3: Preparing to call serverless function at: ${functionUrl}`);
-      console.log('[DEBUG] Sending this payload:', payload);
+      console.log('[DEBUG] Step 4: Calling serverless function:', functionUrl);
+      console.log('[DEBUG] Payload:', payload);
   
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -109,26 +115,22 @@ export default function Signup({ setShowSignup }) {
         body: JSON.stringify(payload),
       });
   
-      console.log('[DEBUG] Step 4: Received a response from the function.', response);
-  
       if (!response.ok) {
         const errorData = await response.json();
-        console.error(`[DEBUG] FATAL: Function returned an error. Status: ${response.status}. Details:`, errorData);
-        throw new Error(errorData.message || 'Serverless function failed.');
+        console.error('[DEBUG] Function error:', errorData);
+        throw new Error(errorData.message || 'Failed to send verification email');
       }
       
       const responseData = await response.json();
-      console.log('[DEBUG] Step 5: Function returned success!', responseData);
-      // Add this after line 121 in SignUp.jsx
-      // Add this after line 121 in SignUp.jsx
-      console.log('[DEBUG] Step 5.1: Full response data:', JSON.stringify(responseData.data, null, 2));
-      console.log('[DEBUG] Step 5.2: Verification link:', responseData.data.verificationLink);
-  
+      console.log('[DEBUG] Step 5: Email sent successfully!', responseData);
+      
+      // Show success screen
+      setSignupSuccess(true);
+      
     } catch (error) {
-      // This block will catch ANY error from the above steps, including network errors.
-      console.error('[DEBUG] CATCH BLOCK: A critical error occurred during the verification process.', error);
-      // For now, we still show the success screen, but the console will have the real error.
-      setSignupSuccess(true); 
+      console.error('[DEBUG] Email verification failed:', error);
+      // Still show success since account was created
+      setSignupSuccess(true);
     } finally {
       setIsVerificationLoading(false);
     }
@@ -152,24 +154,33 @@ export default function Signup({ setShowSignup }) {
   // };
   // REPLACE your old handleSignUp function with this one
 
-const handleSignUp = async (e) => {
-  e.preventDefault();
-  if (password.length < 9) {
-    return;
-  }
-  
-  // Await the result of the signup function
-  const result = await signUpEmailPassword(email, password);
-  
-  // Check if the signup was successful
-  if (result.isSuccess) {
-    // If it was, immediately call the verification function.
-    // This runs BEFORE the component gets unmounted.
-    await handleEmailVerification();
-  }
-  // If there was an error, the `isError` and `error` states from the hook
-  // will automatically update your UI to show the error message.
-};
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    
+    if (password.length < 9) {
+      return;
+    }
+    
+    console.log('[DEBUG] Starting signup process for:', email);
+    
+    try {
+      // Create account in Nhost
+      const result = await signUpEmailPassword(email, password);
+      
+      console.log('[DEBUG] Signup result:', result);
+      
+      // Check if the signup was successful
+      if (result && !result.error) {
+        console.log('[DEBUG] Signup successful, starting email verification...');
+        // Immediately call the verification function
+        await handleEmailVerification();
+      } else {
+        console.error('[DEBUG] Signup failed:', result?.error);
+      }
+    } catch (error) {
+      console.error('[DEBUG] Signup error:', error);
+    }
+  };
 
   const isLoading = signUpIsLoading || isVerificationLoading;
   const isError = signUpIsError;

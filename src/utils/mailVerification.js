@@ -1,153 +1,219 @@
-// utils/emailVerification.js
-import { Resend } from 'resend';
+import { v4 as uuidv4 } from "uuid";
 
-const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
-
-// Generate a random verification token
+// 1. Generate random token (uuid based, safer than Math.random)
 export const generateVerificationToken = () => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return uuidv4().replace(/-/g, "").slice(0, 24); // 24-char token
 };
 
-// Send verification email
-export const sendVerificationEmail = async (email, token, userName = '') => {
+// 2. Store verification token with better auth handling
+export const storeVerificationToken = async (nhost, email, token) => {
   try {
-    const verificationUrl = `${window.location.origin}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+    console.log("[DEBUG] Storing token for:", { email, token });
+    console.log("[DEBUG] User authenticated:", nhost.auth.isAuthenticated());
+    console.log("[DEBUG] User ID:", nhost.auth.getUser()?.id);
     
-    const { data, error } = await resend.emails.send({
-      from: 'ChatBot <onboarding@resend.dev>', // Use resend.dev for testing, change later
-      to: [email],
-      subject: 'Verify Your ChatBot Account',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1e293b; color: #e2e8f0; border-radius: 12px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #3b82f6; margin: 0; font-size: 28px;">ChatBot</h1>
-          </div>
-          
-          <div style="background-color: #334155; padding: 30px; border-radius: 8px; text-align: center;">
-            <h2 style="color: #f8fafc; margin-top: 0;">Welcome${userName ? ' ' + userName : ''}!</h2>
-            <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5; margin: 20px 0;">
-              Thanks for signing up for ChatBot. To complete your registration and verify your email address, please click the button below:
-            </p>
-            
-            <div style="margin: 30px 0;">
-              <a href="${verificationUrl}" style="background: linear-gradient(to right, #3b82f6, #8b5cf6, #a855f7); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
-                Verify Email Address
-              </a>
-            </div>
-            
-            <p style="color: #94a3b8; font-size: 14px; margin-top: 30px;">
-              If you didn't create an account with ChatBot, you can safely ignore this email.
-            </p>
-            
-            <div style="border-top: 1px solid #475569; margin-top: 30px; padding-top: 20px;">
-              <p style="color: #64748b; font-size: 12px; margin: 0;">
-                If the button doesn't work, copy and paste this link into your browser:
-              </p>
-              <p style="color: #3b82f6; font-size: 12px; word-break: break-all; margin: 10px 0 0 0;">
-                ${verificationUrl}
-              </p>
-            </div>
-          </div>
-          
-          <div style="text-align: center; margin-top: 20px; color: #64748b; font-size: 12px;">
-            <p>&copy; Nomaan Faruki - 2025</p>
-          </div>
-        </div>
-      `,
-    });
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // expires in 24h
+    
+    // Get user ID
+    const userId = nhost.auth.getUser()?.id;
+    if (!userId) {
+      console.error("[DEBUG] No user ID available");
+      return { success: false, error: "User not authenticated properly" };
+    }
+    
+    // Try the mutation with explicit user_id
+    const mutation = `
+      mutation InsertEmailVerification($object: email_verifications_insert_input!) {
+        insert_email_verifications_one(object: $object) {
+          id
+          email
+          token
+          verified
+          user_id
+        }
+      }
+    `;
+
+    const variables = {
+      object: {
+        email,
+        token,
+        expires_at: expiresAt.toISOString(),
+        verified: false,
+        user_id: userId, // Explicit user_id
+      },
+    };
+
+    console.log("[DEBUG] Attempting mutation with explicit user_id:", variables);
+    const { data, error } = await nhost.graphql.request(mutation, variables);
 
     if (error) {
-      console.error('Resend error:', error);
+      console.error("[DEBUG] GraphQL Insert Error:", error);
+      console.error("[DEBUG] Error details:", JSON.stringify(error, null, 2));
+      
+      // If that fails, try without user_id (let column preset handle it)
+      console.log("[DEBUG] Trying without explicit user_id...");
+      
+      const simpleVariables = {
+        object: {
+          email,
+          token,
+          expires_at: expiresAt.toISOString(),
+          verified: false,
+        },
+      };
+      
+      const simpleResult = await nhost.graphql.request(mutation, simpleVariables);
+      
+      if (simpleResult.error) {
+        console.error("[DEBUG] Simple mutation also failed:", simpleResult.error);
+        
+        // Try bulk insert as final fallback
+        console.log("[DEBUG] Trying bulk insert as final fallback...");
+        
+        const bulkMutation = `
+          mutation InsertEmailVerificationBulk($objects: [email_verifications_insert_input!]!) {
+            insert_email_verifications(objects: $objects) {
+              returning {
+                id
+                email
+                token
+                verified
+                user_id
+              }
+            }
+          }
+        `;
+        
+        const bulkResult = await nhost.graphql.request(bulkMutation, {
+          objects: [simpleVariables.object]
+        });
+        
+        if (bulkResult.error) {
+          console.error("[DEBUG] All mutation attempts failed:", bulkResult.error);
+          return { success: false, error: bulkResult.error };
+        }
+        
+        console.log("[DEBUG] Bulk insert successful:", bulkResult.data);
+        return { success: true, result: bulkResult.data };
+      }
+      
+      console.log("[DEBUG] Simple mutation successful:", simpleResult.data);
+      return { success: true, result: simpleResult.data };
+    }
+    
+    console.log("[DEBUG] Token stored successfully:", data);
+    return { success: true, result: data };
+  } catch (err) {
+    console.error("[DEBUG] Store token catch error:", err);
+    console.error("[DEBUG] Error details:", JSON.stringify(err, null, 2));
+    return { success: false, error: err };
+  }
+};
+
+// 3. Send verification email
+export const sendVerificationEmail = async (email, token) => {
+  try {
+    const verifyUrl = `${window.location.origin}/verify-email?email=${encodeURIComponent(email)}&token=${token}`;
+    console.log("[DEBUG] Verification URL:", verifyUrl);
+    
+    // For testing - show alert with verification link
+    alert(`✅ Verification Email (TEST MODE)\n\n` +
+          `Email: ${email}\n\n` +
+          `Click this link to verify your account:\n${verifyUrl}\n\n` +
+          `(Copy the link and paste it in your browser)`);
+    
+    return { success: true };
+  } catch (err) {
+    console.error("[DEBUG] Send email error:", err);
+    return { success: false, error: err };
+  }
+};
+
+// 4. Verify email token
+export const verifyEmailToken = async (nhost, email, token) => {
+  try {
+    console.log("[DEBUG] Starting email verification for:", { email, token });
+    
+    const query = `
+      query VerifyEmailToken($email: String!, $token: String!) {
+        email_verifications(
+          where: {
+            email: {_eq: $email},
+            token: {_eq: $token},
+            verified: {_eq: false},
+            expires_at: {_gt: "now()"}
+          }
+          limit: 1
+        ) {
+          id
+          user_id
+          expires_at
+          verified
+        }
+      }
+    `;
+
+    console.log("[DEBUG] Running verification query...");
+    const { data, error } = await nhost.graphql.request(query, { email, token });
+    
+    if (error) {
+      console.error("[DEBUG] Verify query error:", error);
       return { success: false, error };
     }
 
-    console.log('Email sent successfully:', data);
-    return { success: true, data };
-  } catch (error) {
-    console.error('Email sending failed:', error);
-    return { success: false, error };
-  }
-};
+    console.log("[DEBUG] Query result:", data);
 
-// Store verification token (you'll need to implement this with your Nhost GraphQL)
-export const storeVerificationToken = async (nhost, email, token) => {
-  try {
-    // This will store the token in your Nhost database
-    // You'll need to create a table called 'email_verifications' in Hasura
-    const query = `
-      mutation InsertEmailVerification($email: String!, $token: String!, $expires_at: timestamptz!) {
-        insert_email_verifications_one(object: {
-          email: $email,
-          token: $token,
-          expires_at: $expires_at,
-          verified: false
-        }) {
-          id
-        }
-      }
-    `;
-
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
-
-    const result = await nhost.graphql.request(query, {
-      email,
-      token,
-      expires_at: expiresAt.toISOString(),
-    });
-
-    return { success: true, result };
-  } catch (error) {
-    console.error('Error storing verification token:', error);
-    return { success: false, error };
-  }
-};
-
-// Verify email token
-export const verifyEmailToken = async (nhost, email, token) => {
-  try {
-    const query = `
-      query VerifyEmailToken($email: String!, $token: String!) {
-        email_verifications(where: {
-          email: {_eq: $email},
-          token: {_eq: $token},
-          verified: {_eq: false},
-          expires_at: {_gt: "now()"}
-        }) {
-          id
-          email
-        }
-      }
-    `;
-
-    const result = await nhost.graphql.request(query, { email, token });
-    
-    if (result.data?.email_verifications?.length > 0) {
-      // Mark as verified and update user
-      const updateQuery = `
-        mutation VerifyEmail($email: String!, $token: String!) {
-          update_email_verifications(
-            where: {email: {_eq: $email}, token: {_eq: $token}},
-            _set: {verified: true}
-          ) {
-            affected_rows
-          }
-          update_users(
-            where: {email: {_eq: $email}},
-            _set: {emailVerified: true}
-          ) {
-            affected_rows
-          }
-        }
-      `;
-
-      await nhost.graphql.request(updateQuery, { email, token });
-      return { success: true, verified: true };
+    if (!data?.email_verifications?.length) {
+      console.log("[DEBUG] No matching verification record found");
+      return { success: false, error: "Invalid or expired token" };
     }
 
-    return { success: false, error: 'Invalid or expired token' };
-  } catch (error) {
-    console.error('Error verifying token:', error);
-    return { success: false, error };
+    const { id, user_id } = data.email_verifications[0];
+    console.log("[DEBUG] Found verification record:", { id, user_id });
+
+    // Mark token verified + update user.emailVerified
+    const mutation = `
+      mutation VerifyEmail($id: uuid!, $userId: uuid!) {
+        update_email_verifications_by_pk(
+          pk_columns: {id: $id},
+          _set: {verified: true}
+        ) {
+          id
+          verified
+        }
+        update_users_by_pk(
+          pk_columns: {id: $userId},
+          _set: {emailVerified: true}
+        ) {
+          id
+          emailVerified
+        }
+      }
+    `;
+
+    console.log("[DEBUG] Updating verification status...");
+    const updateRes = await nhost.graphql.request(mutation, { id, userId: user_id });
+    
+    if (updateRes.error) {
+      console.error("[DEBUG] Update error:", updateRes.error);
+      return { success: false, error: updateRes.error };
+    }
+
+    console.log("[DEBUG] Email verified successfully:", updateRes.data);
+    
+    // Force refresh of auth state
+    try {
+      await nhost.auth.refreshSession();
+      console.log("[DEBUG] Session refreshed successfully");
+    } catch (refreshError) {
+      console.warn("[DEBUG] Session refresh failed (non-critical):", refreshError);
+    }
+    
+    return { success: true, verified: true };
+  } catch (err) {
+    console.error("[DEBUG] Verify token catch error:", err);
+    return { success: false, error: err };
   }
 };
